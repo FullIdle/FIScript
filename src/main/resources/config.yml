@@ -1,0 +1,9 @@
+##可以是文件夹，也可以是文件,也可以没有后缀,如果要仔细一点的就需要用分割号了比如\\
+##文件夹会自动检测，并将文件夹内所有文件加入脚本
+##如果需要配置一个整个文件夹内的也脚本可以直接写文件夹名,会自动加载的
+cycle:
+  load:
+  enable:
+    - 'PlayerJointListener.groovy'
+    - 'PlayerQuitListener.groovy'
+  disable:
