@@ -1,11 +1,15 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="Encoding">
+    <file url="file://$PROJECT_DIR$/src/main/java/me/filaotou/pokeclear/PokeClear.groovy" charset="GBK" />
+    <file url="file://$PROJECT_DIR$/src/main/java/me/fullidle/fiscript/fiscript/Main.java" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/src/main/resources/PlayerJointListener.groovy" charset="GBK" />
     <file url="file://$PROJECT_DIR$/src/main/resources/PlayerQuitListener.groovy" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/src/main/resources/com/github/fullidle/bioprompt/config.yml" charset="UTF-8" />
-    <file url="file://$PROJECT_DIR$/src/main/resources/config.yml" charset="GBK" />
-    <file url="file://$PROJECT_DIR$/src/main/resources/plugin.yml" charset="GBK" />
+    <file url="file://$PROJECT_DIR$/src/main/resources/config.yml" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/src/main/resources/enable.groovy" charset="GBK" />
+    <file url="file://$PROJECT_DIR$/src/main/resources/plugin.yml" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/src/main/resources/手动绝育/load/GUI.groovy" charset="GBK" />
     <file url="PROJECT" charset="GBK" />
   </component>
 </project>

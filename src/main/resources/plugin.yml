@@ -2,3 +2,6 @@ name: ${rootProject.name}
 main: ${group}
 version: ${version}
 api-version: 1.16
+commands:
+  fiscript:
+    description: reload cmd

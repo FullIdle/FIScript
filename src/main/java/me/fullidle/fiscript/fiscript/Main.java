@@ -2,8 +2,13 @@ package me.fullidle.fiscript.fiscript;
 
 import groovy.lang.GroovyShell;
 import lombok.SneakyThrows;
+import net.minecraft.entity.Entity;
+import org.bukkit.command.Command;
+import org.bukkit.command.CommandSender;
 import org.bukkit.event.Listener;
+import org.bukkit.plugin.PluginManager;
 import org.bukkit.plugin.java.JavaPlugin;
+import org.bukkit.scheduler.BukkitRunnable;
 
 import java.io.File;
 import java.io.IOException;
@@ -18,6 +23,7 @@ public class Main extends JavaPlugin implements Listener{
     public static File[] disableScript;
     public GroovyShell shell = new GroovyShell();
     public static Main plugin;
+    private boolean firstLoad = false;
 
     @Override
     public void onLoad() {
@@ -41,6 +47,8 @@ public class Main extends JavaPlugin implements Listener{
 
     @Override
     public void onEnable() {
+        getCommand(getDescription().getName()).setExecutor(this);
+
         {
             for (File file : enableScript) {
                 try {
@@ -74,6 +82,18 @@ public class Main extends JavaPlugin implements Listener{
         }
         saveDefaultConfig();
         super.reloadConfig();
+        if (!firstLoad){
+            firstLoad = true;
+            return;
+        }
+        {
+            //脚本清理
+            shell.resetLoadedClasses();
+            //去除那些b玩意 监听器和指令
+            PluginManager pluginManager = getServer().getPluginManager();
+            pluginManager.disablePlugin(this);
+            pluginManager.enablePlugin(this);
+        }
     }
 
     @SneakyThrows
@@ -104,5 +124,12 @@ public class Main extends JavaPlugin implements Listener{
             files.add(file);
         }
         return files.stream().filter(f->f.getName().endsWith(".groovy")).collect(Collectors.toList());
+    }
+
+    @Override
+    public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
+        reloadConfig();
+        sender.sendMessage("§aLogged out all listeners and commands!\\reloaded Config!");
+        return false;
     }
 }
