@@ -94,6 +94,7 @@ public class Main extends JavaPlugin implements Listener{
             //去除那些b玩意 监听器和指令
             //执行load,enable,disable
             onDisable();
+            firstLoad = false;
             onLoad();onEnable();
             HandlerList.unregisterAll((Plugin) this);
         }
