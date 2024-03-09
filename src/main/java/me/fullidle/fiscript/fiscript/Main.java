@@ -5,7 +5,9 @@ import lombok.SneakyThrows;
 import net.minecraft.entity.Entity;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
+import org.bukkit.event.HandlerList;
 import org.bukkit.event.Listener;
+import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.PluginManager;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitRunnable;
@@ -90,9 +92,10 @@ public class Main extends JavaPlugin implements Listener{
             //脚本清理
             shell.resetLoadedClasses();
             //去除那些b玩意 监听器和指令
-            PluginManager pluginManager = getServer().getPluginManager();
-            pluginManager.disablePlugin(this);
-            pluginManager.enablePlugin(this);
+            //执行load,enable,disable
+            onDisable();
+            onLoad();onEnable();
+            HandlerList.unregisterAll((Plugin) this);
         }
     }
 
