@@ -1,5 +1,7 @@
 package me.fullidle.fiscript.fiscript;
 
+import groovy.lang.GroovyClassLoader;
+import groovy.lang.GroovyShell;
 import lombok.SneakyThrows;
 import me.fullidle.fiscript.fiscript.evet.ReloadEvent;
 import org.bukkit.command.*;
@@ -8,9 +10,9 @@ import org.bukkit.event.Listener;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.PluginManager;
 import org.bukkit.plugin.java.JavaPlugin;
+import org.codehaus.groovy.control.CompilerConfiguration;
 
 import java.io.File;
-import java.io.IOException;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.List;
@@ -21,7 +23,7 @@ public class Main extends JavaPlugin implements Listener{
     public static File[] loadScript;
     public static File[] enableScript;
     public static File[] disableScript;
-    public FIScriptShell shell = new FIScriptShell();
+    public GroovyShell shell = new GroovyShell(this.getClassLoader());
     public static Main plugin;
     private boolean firstLoad = false;
 
@@ -103,6 +105,7 @@ public class Main extends JavaPlugin implements Listener{
             firstLoad = false;
             //清理缓存
             {
+                shell.getClassLoader().clearCache();
                 shell.resetLoadedClasses();
                 shell.getContext().getVariables().clear();
             }
@@ -144,7 +147,7 @@ public class Main extends JavaPlugin implements Listener{
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
         reloadConfig();
-        sender.sendMessage("§aLogged out all listeners and commands!\\reloaded Config!");
+        sender.sendMessage("§aCache and overload configurations have been stripped away!");
         return false;
     }
 
