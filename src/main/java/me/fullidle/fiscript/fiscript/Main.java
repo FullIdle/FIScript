@@ -1,29 +1,27 @@
 package me.fullidle.fiscript.fiscript;
 
-import groovy.lang.GroovyShell;
 import lombok.SneakyThrows;
-import net.minecraft.entity.Entity;
-import org.bukkit.command.Command;
-import org.bukkit.command.CommandSender;
+import me.fullidle.fiscript.fiscript.evet.ReloadEvent;
+import org.bukkit.command.*;
 import org.bukkit.event.HandlerList;
 import org.bukkit.event.Listener;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.PluginManager;
 import org.bukkit.plugin.java.JavaPlugin;
-import org.bukkit.scheduler.BukkitRunnable;
 
 import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 public class Main extends JavaPlugin implements Listener{
     public static File[] loadScript;
     public static File[] enableScript;
     public static File[] disableScript;
-    public GroovyShell shell = new GroovyShell();
+    public FIScriptShell shell = new FIScriptShell();
     public static Main plugin;
     private boolean firstLoad = false;
 
@@ -40,7 +38,7 @@ public class Main extends JavaPlugin implements Listener{
             for (File file : loadScript) {
                 try {
                     shell.evaluate(file);
-                } catch (IOException e) {
+                } catch (Exception e) {
                     e.printStackTrace();
                 }
             }
@@ -55,7 +53,7 @@ public class Main extends JavaPlugin implements Listener{
             for (File file : enableScript) {
                 try {
                     shell.evaluate(file);
-                } catch (IOException e) {
+                } catch (Exception e) {
                     e.printStackTrace();
                 }
             }
@@ -68,14 +66,13 @@ public class Main extends JavaPlugin implements Listener{
             for (File file : disableScript) {
                 try {
                     shell.evaluate(file);
-                } catch (IOException e) {
+                } catch (Exception e) {
                     e.printStackTrace();
                 }
             }
         }
     }
 
-    @SneakyThrows
     @Override
     public void reloadConfig() {
         if (!new File(getDataFolder(), "config.yml").exists()){
@@ -84,19 +81,33 @@ public class Main extends JavaPlugin implements Listener{
         }
         saveDefaultConfig();
         super.reloadConfig();
+        //判断是否是第一次执行
         if (!firstLoad){
             firstLoad = true;
             return;
         }
+        //第一次load不执行这里的内容
         {
-            //脚本清理
-            shell.resetLoadedClasses();
-            //去除那些b玩意 监听器和指令
+            getServer().getPluginManager().callEvent(new ReloadEvent());
             //执行load,enable,disable
             onDisable();
-            HandlerList.unregisterAll((Plugin) this);
+            //去除那些b玩意 监听器和指令
+            {
+                try {
+                    unregisterAllCMD();
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+                HandlerList.unregisterAll((Plugin) this);
+            }
             firstLoad = false;
-            onLoad();onEnable();
+            //清理缓存
+            {
+                shell.resetLoadedClasses();
+                shell.getContext().getVariables().clear();
+            }
+            onLoad();
+            onEnable();
         }
     }
 
@@ -135,5 +146,23 @@ public class Main extends JavaPlugin implements Listener{
         reloadConfig();
         sender.sendMessage("§aLogged out all listeners and commands!\\reloaded Config!");
         return false;
+    }
+
+    public void unregisterAllCMD() throws NoSuchFieldException, IllegalAccessException {
+        PluginManager manager = getServer().getPluginManager();
+        Field cmField= manager.getClass().getDeclaredField("commandMap");
+        cmField.setAccessible(true);
+        CommandMap cmap = ((CommandMap) cmField.get(manager));
+        Field field = SimpleCommandMap.class.getDeclaredField("knownCommands");
+        field.setAccessible(true);
+        Map<String, Command> knowCommands = (Map<String, Command>) field.get(cmap);
+        for (Command value : knowCommands.values()) {
+            if (value instanceof PluginCommand) {
+                PluginCommand command = (PluginCommand) value;
+                if (command.getPlugin() == this&&command.getName().equalsIgnoreCase("fiscript")) {
+                    command.unregister(cmap);
+                }
+            }
+        }
     }
 }
