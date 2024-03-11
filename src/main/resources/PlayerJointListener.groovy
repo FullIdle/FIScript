@@ -11,6 +11,6 @@ class PlayerJointListener implements Listener{
 
     @EventHandler
     def join(PlayerJoinEvent e){
-        Bukkit.broadcastMessage(e.getPlayer().getName()+'¼ÓÈë·şÎñÆ÷(¸ÃÌáÊ¾ÓÉFIScript½Å±¾Ö´ĞĞ)')
+        Bukkit.broadcastMessage(e.getPlayer().getName()+'åŠ å…¥æœåŠ¡å™¨(è¯¥æç¤ºç”±FIScriptè„šæœ¬æ‰§è¡Œ)')
     }
 }

@@ -11,6 +11,6 @@ class PlayerQuitListener implements Listener{
 
     @EventHandler
     def quit(PlayerQuitEvent e){
-        Bukkit.broadcastMessage(e.getPlayer().getName()+'离开了服务器(该提示由FIScript脚本执行)')
+        Bukkit.broadcastMessage(e.getPlayer().getName()+'绂诲紑浜嗘湇鍔″櫒(璇ユ彁绀虹敱FIScript鑴氭湰鎵ц)')
     }
 }
