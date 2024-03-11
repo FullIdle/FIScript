@@ -15,7 +15,6 @@ class FIScript extends CycleScripts {
     @Override
     void load() {
         me.fullidle.fiscript.fiscript.FIScript.plugin.getLogger().info("FIScript脚本正在加载!")
-        getFIScript().getLogger().info(FIScript2.getName())
     }
 
     @Override
