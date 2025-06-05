@@ -14,10 +14,10 @@ public class FIScriptClassLoader extends GroovyClassLoader {
         super(parentClassLoader,aDefault);
     }
 
-    @Override
+    /*@Override
     public Class<?> parseClass(File file) throws CompilationFailedException, IOException {
         byte[] bytes = Files.readAllBytes(file.toPath());
         String str = new String(bytes,StandardCharsets.UTF_8);
         return super.parseClass(str);
-    }
+    }*/
 }

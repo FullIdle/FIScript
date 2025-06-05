@@ -1,4 +1,12 @@
-##预留config.yml
-##脚本只会认.groovy的,带有main方法的会在周期enable的时候运行
-##脚本内类实现CycleScripts接口的会按照load,enable,disable周期运行
-##虽然是这几个周期不过一定是在FiScript加载之后!
+#启动配置
+#按照顺序配置，则是按照顺序，启动
+#如果不配置则，不视作需要主动启动的脚本
+#如果脚本配置了另一个依赖脚本，被依赖的脚本会被先加载
+
+##
+# scripts:
+#   - '脚本包名.脚本类名'
+#只填写，需要只指向main方法，或者是继承脚本插件类的脚本，其他的脚本类，不需要手动写
+scripts:
+  - 'example1/Example1'
+  - 'example2/Example2'

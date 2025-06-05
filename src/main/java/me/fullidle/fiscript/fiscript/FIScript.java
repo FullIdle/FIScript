@@ -1,199 +1,133 @@
 package me.fullidle.fiscript.fiscript;
 
-import groovy.lang.GroovyCodeSource;
 import lombok.SneakyThrows;
-import me.fullidle.fiscript.fiscript.api.CycleScripts;
-import org.bukkit.Bukkit;
+import lombok.val;
+import me.fullidle.fiscript.fiscript.api.ScriptPlugin;
 import org.bukkit.command.*;
 import org.bukkit.event.HandlerList;
-import org.bukkit.event.Listener;
-import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.PluginManager;
 import org.bukkit.plugin.java.JavaPlugin;
-import org.codehaus.groovy.control.CompilationFailedException;
 import org.codehaus.groovy.control.CompilerConfiguration;
 
+import java.io.Closeable;
 import java.io.File;
-import java.io.IOException;
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
-import java.lang.reflect.Modifier;
 import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
+import java.util.function.Consumer;
+import java.util.function.Function;
+import java.util.logging.Logger;
 
-public class FIScript extends JavaPlugin implements Listener{
-    public static FIScript plugin;
-    private FIScriptClassLoader loader;
-    private final ArrayList<CycleScripts> cycleScripts = new ArrayList<>();
-    private final ArrayList<Method> mainMethod = new ArrayList<>();
+public class FIScript extends JavaPlugin {
+    public static FIScript INSTANCE;
 
     @Override
     public void onLoad() {
-        plugin = this;
-        reload(null,true);
-        load();
-    }
-    public void load(){
-        //判断同名并删除
-        ArrayList<String> scriptName = new ArrayList<>();
-        ArrayList<CycleScripts> waitDel = new ArrayList<>();
-        for (CycleScripts script : cycleScripts) {
-            if (scriptName.contains(script.getScriptName())){
-                RuntimeException e = new RuntimeException("Script ["+script.getScriptName()+":"+script.getVersion()+"] with the same name appears!");
-                e.printStackTrace();
-                waitDel.add(script);
-                continue;
-            }
-            getLogger().info("Loading Script:["+script.getScriptName()+":"+script.getVersion()+"]");
-            try {
-                scriptName.add(script.getScriptName());
-                script.load();
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-        }
-        cycleScripts.removeAll(waitDel);
+        INSTANCE = this;
+        scriptsFolder = new File(getDataFolder(), "scripts");
+
+        reloadConfig();
+        loadedScriptPlugins.forEach(FIScript::safeLoad);
     }
 
     @Override
     public void onEnable() {
-        getCommand(getDescription().getName()).setExecutor(this);
-        enable();
-    }
-    public void enable(){
-        for (Method m : mainMethod) {
-            try {
-                m.invoke(null, (Object) new String[0]);
-            } catch (IllegalAccessException | InvocationTargetException e) {
-                e.printStackTrace();
-            }
-        }
-        for (CycleScripts script : cycleScripts) {
-            getLogger().info("Enabling Script:["+script.getScriptName()+":"+script.getVersion()+"]");
-            try {
-                script.enable();
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-        }
+        super.onEnable();
+        getCommand("fiscript").setExecutor(this);
+        loadedScriptPlugins.forEach(FIScript::safeEnable);
     }
 
     @Override
     public void onDisable() {
-        for (CycleScripts script : cycleScripts) {
-            getLogger().info("Disabling Script:["+script.getScriptName()+":"+script.getVersion()+"]");
-            try {
-                script.disable();
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-        }
+        super.onDisable();
+        loadedScriptPlugins.forEach(FIScript::safeDisable);
     }
 
+    public final ArrayList<ScriptPlugin> loadedScriptPlugins = new ArrayList<>();
+    public File scriptsFolder = null;
+    public FIScriptClassLoader scriptClassLoader = null;
+
+    /**
+     * 卸载脚本，重载配置，重加载脚本
+     * 重加载脚本的main方法会立即指向，但load enable disable周期并不会理解执行
+     * 卸载的disable会执行
+     */
     @SneakyThrows
-    public void reload(CommandSender sender,boolean isFirstLoad){
-        //注销所有指令和监听器
-        {
-            unregisterAllCMD();
-            HandlerList.unregisterAll((Plugin) this);
-        }
-        //执行一次卸载内容
-        onDisable();
-        //清理list
-        cycleScripts.clear();
-        mainMethod.clear();
-        //判断是不是第一次运行这个插件
-        if (!new File(getDataFolder(), "config.yml").exists()){
-            saveResource("PlayerJointListener.groovy",false);
-            saveResource("FIScript.groovy",false);
-            saveResource("PlayerQuitListener.groovy",false);
-        }
-        //加载config.yml
-        saveDefaultConfig();
-        super.reloadConfig();
-        //待用
-        sender = sender == null ? Bukkit.getConsoleSender() : sender;
-        //存好一个Groovy类加载器
-        FIScriptClassLoader gLoader = new FIScriptClassLoader(this.getClassLoader(), CompilerConfiguration.DEFAULT);
-        Map<Class<?>,File> cycClass = new HashMap<>();
-        //获取插件目录内所有的.groovy文件
-        for (File file : getListFile(getDataFolder())) {
-            Class<?> aClass;
-            try {
-                aClass = gLoader.parseClass(file);
-            } catch (CompilationFailedException | IOException e) {
-                e.addSuppressed(new RuntimeException("Please check script file:"+file.getPath()));
-                e.printStackTrace();
-                continue;
-            }
-            //所有实现周期接口的类添加到临时
-            boolean assignableFrom = CycleScripts.class.isAssignableFrom(aClass);
-            if (assignableFrom) {
-                cycClass.put(aClass,file);
-            }
-            //添加带有main方法的类
-            for (Method method : aClass.getDeclaredMethods()) {
-                if (method.getName().equals("main")&&
-                        method.getParameterTypes().length == 1&&
-                        method.getParameterTypes()[0].equals(String[].class)&&
-                        Modifier.isStatic(method.getModifiers())&&Modifier.isPublic(method.getModifiers())){
-                    mainMethod.add(method);
-                }
-            }
-        }
-        //存入
-        for (Map.Entry<Class<?>, File> entry : cycClass.entrySet()) {
-            //需要所有类加载了在去实例化有接口的类才行
-            CycleScripts cycleS = (CycleScripts) entry.getKey().getConstructor().newInstance();
-            Field field = CycleScripts.class.getDeclaredField("file");
-            field.setAccessible(true);
-            field.set(cycleS,entry.getValue());
-            cycleScripts.add(cycleS);
-        }
-        if (!isFirstLoad){
-            if (loader != null){
-                loader.clearCache();
-                loader.close();
-            }
-            load();enable();
-        }
-        loader = gLoader;
-    }
-
-    //获取指定文件下的所有.groovy
-    public static List<File> getListFile(File file){
-        ArrayList<File> files = new ArrayList<>();
-        if (file.isDirectory()) {
-            File[] listFiles = file.listFiles();
-            if (listFiles == null) {
-                return files;
-            }
-            for (File subFile : listFiles) {
-                files.addAll(getListFile(subFile));
-            }
-            return files;
-        }else{
-            files.add(file);
-        }
-        return files.stream().filter(f->f.getName().endsWith(".groovy")).collect(Collectors.toList());
-    }
-
-    //指令
     @Override
-    public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
-        reload(sender,false);
-        sender.sendMessage("§aCache and overload configurations have been stripped away!");
-        return false;
+    public void reloadConfig() {
+        //卸载已加载的并清楚且注销所有指令和监听器
+        loadedScriptPlugins.forEach(ScriptPlugin::disable);
+        loadedScriptPlugins.clear();
+        unregisterAll();
+        if (scriptClassLoader != null) {
+            scriptClassLoader.clearCache();
+            scriptClassLoader.close();
+            //请求gc
+            System.gc();
+        }
+
+        //重新加载
+        this.saveDefaultConfig();
+        super.reloadConfig();
+
+        //脚本文件
+        if (!scriptsFolder.exists()) {
+            scriptsFolder.mkdirs();
+            saveResource("scripts/example1/Example1.groovy", false);
+            saveResource("scripts/example2/Example2.groovy", false);
+        }
+
+        //新的脚本类加载器
+        scriptClassLoader = new FIScriptClassLoader(this.getClassLoader(), CompilerConfiguration.DEFAULT);
+        scriptClassLoader.addURL(scriptsFolder.toURI().toURL());
+
+        val config = getConfig();
+        val logger = this.getLogger();
+        for (String path : config.getStringList("scripts"))
+            try {
+                val clz = scriptClassLoader.loadClass(path,true,false,true);
+                try {
+                    val main = clz.getDeclaredMethod("main", String[].class);
+                    try {
+                        main.invoke(null, (Object) new String[]{});
+                    } catch (Exception e) {
+                        error(logger, e);
+                    }
+                } catch (NoSuchMethodException ignored) {
+                }
+                val instance = clz.newInstance();
+                if (instance instanceof ScriptPlugin)
+                    loadedScriptPlugins.add(((ScriptPlugin) instance));
+            } catch (Exception e) {
+                error(logger, e);
+            }
     }
 
-    //注销所有指令
+    /**
+     * 注销有关所有脚本的注册行为!
+     */
+    public void unregisterAll() {
+        try {
+            unregisterAllCMD();
+        } catch (NoSuchFieldException | IllegalAccessException e) {
+            throw new RuntimeException("Failed to log out all commands!", e);
+        }
+        HandlerList.unregisterAll(this);
+    }
+
+    /**
+     * 注销所有命令
+     * 测试 1.12.2 和 1.21.1 均可以正常使用
+     *
+     * @throws NoSuchFieldException   没找到指令图集
+     * @throws IllegalAccessException 指令图集获取提供参数错误
+     */
     public void unregisterAllCMD() throws NoSuchFieldException, IllegalAccessException {
         PluginManager manager = getServer().getPluginManager();
-        Field cmField= manager.getClass().getDeclaredField("commandMap");
+        Field cmField = manager.getClass().getDeclaredField("commandMap");
         cmField.setAccessible(true);
         CommandMap cmap = ((CommandMap) cmField.get(manager));
         Field field = SimpleCommandMap.class.getDeclaredField("knownCommands");
@@ -202,9 +136,82 @@ public class FIScript extends JavaPlugin implements Listener{
         for (Command value : knowCommands.values()) {
             if (value instanceof PluginCommand) {
                 PluginCommand command = (PluginCommand) value;
-                if (command.getPlugin() == this&&command.getName().equalsIgnoreCase("fiscript")) {
+                if (command.getPlugin() == this && command.getName().equalsIgnoreCase("fiscript")) {
                     command.unregister(cmap);
                 }
+            }
+        }
+    }
+
+    @Override
+    public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
+        this.reloadConfig();
+        val logger = this.getLogger();
+        val loadFailed = new ArrayList<ScriptPlugin>();
+        for (ScriptPlugin scriptPlugin : loadedScriptPlugins)
+            try {
+                scriptPlugin.load();
+            } catch (Exception e) {
+                error(logger,e);
+                loadFailed.add(scriptPlugin);
+                sender.sendMessage("Failed to load script: " + "[" + scriptPlugin.getScriptName() + "-" + scriptPlugin.getVersion() + "]");
+            }
+        for (ScriptPlugin scriptPlugin : loadedScriptPlugins)
+            try {
+                scriptPlugin.enable();
+            } catch (Exception e) {
+                error(logger,e);
+                sender.sendMessage("Failed to enable script: " + "[" + scriptPlugin.getScriptName() + "-" + scriptPlugin.getVersion() + "]");
+            }
+        sender.sendMessage("§aReloaded successfully!");
+        if (!loadFailed.isEmpty()) {
+            sender.sendMessage("§cThe list of scripts that failed to load is as follows:");
+            for (ScriptPlugin plugin : loadFailed)
+                sender.sendMessage("§c  - " + plugin.getScriptName() + "-" + plugin.getVersion());
+            loadedScriptPlugins.removeAll(loadFailed);
+        }
+        return true;
+    }
+
+    public static void safeExec(ScriptPlugin plugin, Consumer<ScriptPlugin> action) {
+        try {
+            action.accept(plugin);
+        } catch (Exception e) {
+            error(INSTANCE.getLogger(),e);
+        }
+    }
+
+    public static void safeLoad(ScriptPlugin plugin){
+        INSTANCE.getLogger().info("Loading script plugin " + plugin.getScriptName() + "-" + plugin.getVersion());
+        safeExec(plugin, ScriptPlugin::load);
+    }
+
+    public static void safeEnable(ScriptPlugin plugin){
+        INSTANCE.getLogger().info("Enabling script plugin " + plugin.getScriptName() + "-" + plugin.getVersion());
+        safeExec(plugin, ScriptPlugin::enable);
+    }
+
+    public static void safeDisable(ScriptPlugin plugin){
+        INSTANCE.getLogger().info("Disabling script plugin " + plugin.getScriptName() + "-" + plugin.getVersion());
+        safeExec(plugin, ScriptPlugin::disable);
+    }
+
+    public static void error(Logger logger, Throwable throwable) {
+        use(new StringWriter(), sw-> use(new PrintWriter(sw), pw -> {
+            throwable.printStackTrace(pw);
+            logger.severe(sw.toString());
+        }));
+    }
+
+    public static <T extends Closeable> void use(T closeable, Consumer<T> consumer) {
+        try {
+            consumer.accept(closeable);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        } finally {
+            try{
+                closeable.close();
+            } catch (Exception ignored) {
             }
         }
     }
