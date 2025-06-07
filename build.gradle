@@ -1,14 +1,8 @@
-buildscript {
-    repositories {
-        gradlePluginPortal()
-    }
-    dependencies {
-        classpath 'com.github.johnrengelman:shadow:8.1.1'
-    }
+plugins {
+    id 'java'
+    id 'com.github.johnrengelman.shadow' version '8.1.1'
+    id 'maven-publish'
 }
-
-apply plugin: 'com.github.johnrengelman.shadow'
-apply plugin: 'java'
 
 group = 'me.fullidle.fiscript.fiscript.FIScript'
 version = '1.3.5'
@@ -25,7 +19,8 @@ allprojects {
         maven {
             allowInsecureProtocol = true
             url "http://server.pokemtd.top:31647/snapshots"
-        }}
+        }
+    }
     dependencies {
         /*spigot and plugin*/
         compileOnly 'me.clip:placeholderapi:2.11.6'
@@ -60,4 +55,22 @@ shadowJar {
     archiveClassifier.set(group)
     archiveVersion.set(version)
     mergeServiceFiles()
+}
+
+publishing {
+    publications {
+        mavenJava(MavenPublication) {
+            from components.java
+        }
+    }
+    repositories {
+        maven {
+            url(uri(diary_studio_repo))
+            allowInsecureProtocol = true
+            credentials {
+                username = diary_studio_username
+                password = diary_studio_password
+            }
+        }
+    }
 }

@@ -59,7 +59,7 @@ public class FIScript extends JavaPlugin {
     @Override
     public void reloadConfig() {
         //卸载已加载的并清楚且注销所有指令和监听器
-        loadedScriptPlugins.forEach(ScriptPlugin::disable);
+        loadedScriptPlugins.forEach(FIScript::safeDisable);
         loadedScriptPlugins.clear();
         unregisterAll();
         if (scriptClassLoader != null) {
